@@ -1,0 +1,17 @@
+[Unit]
+Description=TFT Miner Web Interface
+After=network.target
+StartsAfter=tft-miner.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/tft-miner
+ExecStart=/usr/bin/python3 /home/pi/tft-miner/app.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pi Miner Settings</title>
+  <style>
+    :root{color-scheme:dark;--green:#00ff00;--line:#0b4;--panel:#0a0a0a;--muted:#999}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#000;color:#fff;font:14px monospace;padding:20px}
+    main{max-width:500px;margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px}
+    h1{color:var(--green);font-size:20px;margin:0 0 20px}label{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;margin:14px 0 5px;font-weight:bold}
+    input,select{width:100%;padding:11px;margin-bottom:12px;background:#111;border:1px solid var(--line);border-radius:4px;color:var(--green);font:inherit}
+    input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 8px rgba(0,255,0,.2)}
+    .section{margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid #222}
+    .section:last-of-type{border-bottom:none}
+    button{width:100%;padding:12px;margin-top:20px;background:var(--line);color:#000;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-family:inherit;transition:.2s}
+    button:hover{background:var(--green)}
+    .preview{display:flex;align-items:center;gap:12px;margin-top:12px;padding:12px;background:#111;border-left:2px solid var(--line)}
+    #coinLogo{width:36px;height:36px;object-fit:contain}.name{color:#fff}.symbol{color:var(--muted);font-size:11px}
+    #message{min-height:18px;margin-top:14px;padding:10px;border-radius:4px;color:#fff;font-size:12px;display:none}
+    #message.success{background:var(--line);color:#000}
+    #message.error{background:#f66}
+    .back{display:block;margin-top:18px;color:var(--muted);font-size:12px;text-decoration:none}
+    .back:hover{color:var(--green)}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>⚙️ PI MINER CONFIG</h1>
+    
+    <div class="section">
+      <label>Coin Selection</label>
+      <select id="coin">
+        <option value="digibyte">DigiByte (DGB) - SHA256d</option>
+        <option value="bitcoin">Bitcoin (BTC) - SHA256</option>
+        <option value="litecoin">Litecoin (LTC) - Scrypt</option>
+        <option value="dogecoin">Dogecoin (DOGE) - Scrypt</option>
+      </select>
+      <div class="preview"><img id="coinLogo" alt="Coin logo"><div><div class="name" id="coinName"></div><div class="symbol" id="coinSymbol"></div></div></div>
+    </div>
+
+    <form id="poolForm" class="section">
+      <label for="pool">Pool Address</label>
+      <input type="text" id="pool" placeholder="sha256d.maxedhash.com" required>
+      
+      <label for="port">Pool Port</label>
+      <input type="number" id="port" placeholder="3032" required>
+      
+      <label for="wallet">Wallet Address</label>
+      <input type="text" id="wallet" placeholder="Dxxxxxxxxxxxx..." required>
+      
+      <label for="worker">Worker Name</label>
+      <input type="text" id="worker" placeholder="pi4b" value="pi4b">
+      
+      <label for="algo">Algorithm</label>
+      <input type="text" id="algo" placeholder="sha256d" required>
+
+      <button type="submit">💾 SAVE POOL CONFIG</button>
+    </form>
+
+    <div id="message" role="status"></div>
+    <a class="back" href="/">&larr; Back to miner display</a>
+  </main>
+
+  <script>
+    const coins={
+      digibyte:{name:'DigiByte',symbol:'DGB',logo:'https://assets.coingecko.com/coins/images/63/large/digibyte.png'},
+      bitcoin:{name:'Bitcoin',symbol:'BTC',logo:'https://assets.coingecko.com/coins/images/1/large/bitcoin.png'},
+      litecoin:{name:'Litecoin',symbol:'LTC',logo:'https://assets.coingecko.com/coins/images/2/large/litecoin.png'},
+      dogecoin:{name:'Dogecoin',symbol:'DOGE',logo:'https://assets.coingecko.com/coins/images/5/large/dogecoin.png'}
+    };
+    const select=document.querySelector('#coin'),logo=document.querySelector('#coinLogo'),form=document.querySelector('#poolForm');
+    function previewCoin(){const c=coins[select.value];document.querySelector('#coinName').textContent=c.name;document.querySelector('#coinSymbol').textContent=c.symbol;logo.src=c.logo;localStorage.setItem('selectedCoin',select.value);}
+    async function loadConfig(){try{const r=await fetch('/api/config');const d=await r.json();document.querySelector('#pool').value=d.pool_address;document.querySelector('#port').value=d.pool_port;document.querySelector('#wallet').value=d.wallet;document.querySelector('#worker').value=d.worker_name;document.querySelector('#algo').value=d.algorithm}catch(e){console.error('Failed to load config',e)}}
+    function showMessage(msg,isSuccess){const el=document.querySelector('#message');el.textContent=msg;el.className=isSuccess?'success':'error';el.style.display='block';setTimeout(()=>el.style.display='none',3000);}
+    select.value=localStorage.getItem('selectedCoin')||'digibyte';previewCoin();select.onchange=previewCoin;
+    form.onsubmit=async(e)=>{e.preventDefault();const config={pool_address:document.querySelector('#pool').value,pool_port:document.querySelector('#port').value,wallet:document.querySelector('#wallet').value,worker_name:document.querySelector('#worker').value,algorithm:document.querySelector('#algo').value};try{const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const d=await r.json();showMessage(d.message||d.status,d.status==='success')}catch(e){showMessage('Error saving config',false)}};
+    loadConfig();
+  </script>
+</body>
+</html>

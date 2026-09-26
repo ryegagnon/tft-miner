@@ -1,0 +1,16 @@
+[Unit]
+Description=TFT Miner - SHA256 CPU Mining
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/cpuminer-opt
+ExecStart=/home/pi/cpuminer-opt/cpuminer-sse2 -a sha256d -o stratum+tcp://sha256d.maxedhash.com:3032 -u wallet.pi4b -p x
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
