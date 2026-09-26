@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pi Miner Settings</title>
+  <style>
+    :root{color-scheme:dark;--green:#00ff00;--line:#0b4;--panel:#0a0a0a;--muted:#999}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#000;color:#fff;font:14px monospace;padding:20px}
+    main{max-width:420px;margin:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px}
+    h1{color:var(--green);font-size:20px;margin:0 0 20px}label{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;margin:14px 0 5px}
+    select,button{width:100%;padding:11px;background:#111;border:1px solid var(--line);border-radius:4px;color:var(--green);font:inherit}
+    button{margin-top:20px;background:var(--line);color:#000;font-weight:bold;cursor:pointer}button:hover{background:var(--green)}
+    .preview{display:flex;align-items:center;gap:12px;margin-top:20px;padding:12px;background:#111;border-left:2px solid var(--line)}
+    #logo{width:36px;height:36px;object-fit:contain}.name{color:#fff}.symbol{color:var(--muted);font-size:11px}
+    #message{min-height:18px;margin-top:14px;color:var(--green);font-size:12px}.back{display:block;margin-top:18px;color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>PI MINER SETTINGS</h1>
+    <label for="coin">Coin being mined</label>
+    <select id="coin">
+      <option value="digibyte">DigiByte (DGB)</option>
+      <option value="bitcoin">Bitcoin (BTC)</option>
+      <option value="litecoin">Litecoin (LTC)</option>
+      <option value="dogecoin">Dogecoin (DOGE)</option>
+    </select>
+    <div class="preview"><img id="logo" alt="Coin logo"><div><div class="name" id="name"></div><div class="symbol" id="symbol"></div></div></div>
+    <button id="save">SAVE COIN SELECTION</button>
+    <div id="message" role="status"></div>
+    <a class="back" href="/">← Back to miner display</a>
+  </main>
+  <script>
+    const coins={
+      digibyte:{name:'DigiByte',symbol:'DGB',logo:'https://assets.coingecko.com/coins/images/63/large/digibyte.png'},
+      bitcoin:{name:'Bitcoin',symbol:'BTC',logo:'https://assets.coingecko.com/coins/images/1/large/bitcoin.png'},
+      litecoin:{name:'Litecoin',symbol:'LTC',logo:'https://assets.coingecko.com/coins/images/2/large/litecoin.png'},
+      dogecoin:{name:'Dogecoin',symbol:'DOGE',logo:'https://assets.coingecko.com/coins/images/5/large/dogecoin.png'}
+    };
+    const select=document.querySelector('#coin'),logo=document.querySelector('#logo');
+    function preview(){const c=coins[select.value];document.querySelector('#name').textContent=c.name;document.querySelector('#symbol').textContent=c.symbol;logo.src=c.logo;}
+    select.value=localStorage.getItem('selectedCoin')||'digibyte';preview();select.onchange=preview;
+    document.querySelector('#save').onclick=()=>{localStorage.setItem('selectedCoin',select.value);document.querySelector('#message').textContent='Saved. The display will use '+coins[select.value].symbol+' market data.';};
+  </script>
+</body>
+</html>
