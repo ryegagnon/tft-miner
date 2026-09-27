@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pi Miner</title>
+<style>:root{--green:#0f0;--line:#0b4;--muted:#999}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#fff;font:13px monospace}body{display:flex;align-items:center;justify-content:center;padding:20px}.container{max-width:600px;width:100%;background:#0a0a0a;border:1px solid var(--line);border-radius:8px;padding:20px}.header{text-align:center;margin-bottom:20px}.title{color:var(--green);font-size:24px;margin:0 0 10px;font-weight:bold}.subtitle{color:var(--muted);font-size:12px;margin:0}.divider{height:2px;background:var(--line);margin:15px 0}.status-section{margin:20px 0;padding:15px;background:#111;border-radius:6px}.status-label{color:var(--muted);font-size:11px;text-transform:uppercase;margin-bottom:5px}.status-value{color:var(--green);font-size:18px;font-weight:bold;margin-bottom:3px}.status-sub{color:var(--muted);font-size:11px}.market-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:20px 0}.market-item{padding:12px;background:#111;border-left:2px solid var(--line);border-radius:4px}.market-label{color:var(--muted);font-size:10px;text-transform:uppercase}.market-value{color:var(--green);font-size:16px;font-weight:bold;margin-top:4px}.change-up{color:#0f0}.change-down{color:#f66}.config-status{padding:12px;background:#111;border-radius:6px;margin:15px 0;text-align:center}.config-status.configured{border-left:3px solid var(--line)}.config-status.unconfigured{border-left:3px solid #f66}.config-message{color:var(--muted);font-size:12px}.config-message.active{color:var(--green);font-weight:bold}.button{display:block;width:100%;padding:14px;margin-top:15px;background:var(--line);color:#000;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-family:inherit;font-size:13px;text-decoration:none;text-align:center;transition:.2s}.button:hover{background:var(--green)}.button.secondary{background:#222;color:var(--green)}.button.secondary:hover{background:var(--line);color:#000}.logo{width:32px;height:32px;object-fit:contain;margin-bottom:10px}#message{min-height:18px;margin-top:10px;padding:10px;border-radius:4px;font-size:12px;display:none;text-align:center}#message.success{background:var(--line);color:#000}#message.error{background:#f66;color:#fff}</style></head>
+<body>
+<div class="container">
+  <div class="header">
+    <img id="logo" class="logo" alt="Coin logo">
+    <h1 class="title">PI MINER</h1>
+    <p class="subtitle" id="coinName">Mining on Raspberry Pi 4B</p>
+  </div>
+  
+  <div class="divider"></div>
+  
+  <div class="status-section">
+    <div class="status-label">Hash Rate</div>
+    <div class="status-value" id="hashrate">-- kH/s</div>
+    <div class="status-sub">
+      <div id="accepted">Accepted: --</div>
+      <div id="rejected">Rejected: --</div>
+    </div>
+  </div>
+
+  <div class="market-grid">
+    <div class="market-item">
+      <div class="market-label" id="coinLabel">Price</div>
+      <div class="market-value" id="price">Loading...</div>
+      <div class="market-value" id="change"></div>
+    </div>
+    <div class="market-item">
+      <div class="market-label">Market Cap</div>
+      <div class="market-value" id="cap">--</div>
+    </div>
+  </div>
+
+  <div class="config-status" id="configStatus">
+    <div class="config-message" id="configMessage">Pool not configured</div>
+  </div>
+
+  <div id="message"></div>
+
+  <button class="button" onclick="location.href='/settings'">⚙️ CONFIGURE POOL</button>
+  <button class="button secondary" id="refreshBtn">🔄 REFRESH</button>
+
+  <div style="text-align:center;color:var(--muted);font-size:10px;margin-top:20px">
+    Updated: <span id="updated">--</span>
+  </div>
+</div>
+
+<script>
+const coins = {
+  digibyte: { id: 'digibyte', symbol: 'DGB', logo: 'https://assets.coingecko.com/coins/images/63/large/digibyte.png', name: 'DigiByte' },
+  'bitcoin-cash': { id: 'bitcoin-cash', symbol: 'BCH', logo: 'https://assets.coingecko.com/coins/images/780/large/bitcoin-cash-circle.png', name: 'Bitcoin Cash' },
+  litecoin: { id: 'litecoin', symbol: 'LTC', logo: 'https://assets.coingecko.com/coins/images/2/large/litecoin.png', name: 'Litecoin' },
+  dogecoin: { id: 'dogecoin', symbol: 'DOGE', logo: 'https://assets.coingecko.com/coins/images/5/large/dogecoin.png', name: 'Dogecoin' }
+};
+
+let coin = 'digibyte';
+let config = {};
+
+function money(n) {
+  return n >= 1 ? '$' + n.toFixed(2) : '$' + n.toFixed(8);
+}
+
+function compact(n) {
+  return n >= 1e9 ? '$' + (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M' : '$' + Math.round(n);
+}
+
+function clock() {
+  document.querySelector('#updated').textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config');
+    const d = await r.json();
+    config = d;
+    coin = d.coin || 'digibyte';
+    updateConfigStatus();
+  } catch (e) {
+    console.error('Failed to load config', e);
+  }
+}
+
+function updateConfigStatus() {
+  const status = document.getElementById('configStatus');
+  const msg = document.getElementById('configMessage');
+  
+  if (config.wallet && config.pool_address && config.pool_port) {
+    status.classList.add('configured');
+    status.classList.remove('unconfigured');
+    msg.classList.add('active');
+    const coinName = coins[coin]?.name || 'Unknown';
+    msg.textContent = `✓ Mining ${coinName} → ${config.pool_address}:${config.pool_port}`;
+  } else {
+    status.classList.add('unconfigured');
+    status.classList.remove('configured');
+    msg.classList.remove('active');
+    msg.textContent = '⚠ Pool not configured - click "CONFIGURE POOL" to start';
+  }
+}
+
+async function updateMarket() {
+  const c = coins[coin] || coins.digibyte;
+  document.querySelector('#logo').src = c.logo;
+  document.querySelector('#coinLabel').textContent = c.symbol + ' Price';
+  document.querySelector('#coinName').textContent = `Mining ${c.name} on Raspberry Pi 4B`;
+  
+  try {
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${c.id}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true`);
+    const d = (await r.json())[c.id];
+    
+    document.querySelector('#price').textContent = money(d.usd);
+    
+    const changeVal = d.usd_24h_change || 0;
+    const changeEl = document.querySelector('#change');
+    changeEl.textContent = (changeVal >= 0 ? '+' : '') + changeVal.toFixed(2) + '%';
+    changeEl.className = changeVal >= 0 ? 'change-up' : 'change-down';
+    
+    document.querySelector('#cap').textContent = compact(d.usd_market_cap);
+  } catch (e) {
+    document.querySelector('#price').textContent = 'Unavailable';
+  }
+}
+
+async function updateMiner() {
+  try {
+    const d = await (await fetch('/api/miner/status', { cache: 'no-store' })).json();
+    if (d.hashrate) document.querySelector('#hashrate').textContent = d.hashrate + ' ' + (d.unit || 'kH/s');
+    if (d.accepted != null) document.querySelector('#accepted').textContent = 'Accepted: ' + d.accepted;
+    if (d.rejected != null) document.querySelector('#rejected').textContent = 'Rejected: ' + d.rejected;
+  } catch (e) {
+    console.error('Miner status unavailable', e);
+  }
+}
+
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  loadConfig();
+  updateMarket();
+  updateMiner();
+  clock();
+});
+
+// Initial load
+loadConfig();
+updateMarket();
+updateMiner();
+clock();
+
+// Periodic updates
+setInterval(updateMiner, 5000);
+setInterval(clock, 1000);
+setInterval(() => {
+  loadConfig();
+  updateMarket();
+}, 60000);
+</script>
+</body>
+</html>
